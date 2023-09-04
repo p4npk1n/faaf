@@ -1,109 +1,122 @@
 extern crate serde;
 extern crate toml;
 
-use serde::Deserialize;
-use std::fs;
-use std::error::Error;
 
-#[derive(Deserialize, Debug)]
-struct Analyzer {
+#[derive(serde::Deserialize, Debug)]
+pub struct Analyzer {
     name: String,
     extension: String,
+    arguments: Option<Vec<String>>,
     dependencies: Option<Vec<String>>,
     conditions: Option<String>
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(serde::Deserialize, Debug)]
 pub struct Config {
     analyzer: Vec<Analyzer>,
 }
 
-pub fn print_config(config: &Config) {
-    println!("Config:");
-
-    for (index, analyzer) in config.analyzer.iter().enumerate() {
-        println!("  Analyzer {}:", index + 1);
-        println!("    Name: {}", analyzer.name);
-        println!("    Extension: {}", analyzer.extension);
-
-        if let Some(ref deps) = analyzer.dependencies {
-            println!("    Dependencies: {:?}", deps);
-        } else {
-            println!("    Dependencies: None");
-        }
-
-        if let Some(ref cond) = analyzer.conditions {
-            println!("  Conditions:");
-            for line in cond.lines() {
-                println!("    {}", line);
-            }
-        }
-        println!();
+impl Config {
+    pub fn load(filename: &str) -> Result<Config, Error>{
+        let contents = std::fs::read_to_string(filename)?;
+        let config: Config = toml::from_str(&contents)?;
+        return Ok(config);
     }
 }
 
+#[derive(Debug)]
+pub enum Error {
+    IoError(std::io::Error),
+    TomlError(toml::de::Error),
+}
 
-pub fn load(filename: &str) -> Result<Config, Box<dyn Error>>{
-    let contents = fs::read_to_string(filename)?;
-    let config: Config = toml::from_str(&contents)?;
-    return Ok(config);
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Error::IoError(err) => write!(f, "IO Error: {}", err),
+            Error::TomlError(err) => write!(f, "TOML Error: {}", err),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Error {
+        return Error::IoError(err);
+    }
+}
+
+impl From<toml::de::Error> for Error {
+    fn from(err: toml::de::Error) -> Error {
+        return Error::TomlError(err);
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use toml;
-
-    const SAMPLE_TOML: &str = r#"
-    [[analyzer]]
-    name = "basic"
-    extension = "so"
-
-    [[analyzer]]
-    name = "ldd"
-    extension = "sh"
-    dependencies = ["basic"]
-    conditions = """
-        basic.mime == \"application/x-pie-executable\" and
-        basic.size > 5000
-    """
-
-    [[analyzer]]
-    name = "ghidra"
-    extension = "sh"
-    dependencies = ["basic", "ldd", "cveinfo"]
-    "#;
-
+    use std::fs::File;
+    use std::io::Write;
+    use tempfile::tempdir;
 
     #[test]
-    fn test_load() -> Result<(), Box<dyn Error>> {
+    fn test_load_valid_config() {
+        // テスト用のTOMLデータ
+        let data = r#"
+            [[analyzer]]
+            name = "analyzer1"
+            extension = "ext1"
 
-        let temp_file = "temp.toml";
-        fs::write(temp_file, SAMPLE_TOML)?;
+            [[analyzer]]
+            name = "analyzer2"
+            extension = "ext2"
+            arguments = ["arg1", "arg2"]
+        "#;
 
-        let config: Config = load(temp_file)?;
+        // 一時ディレクトリを作成
+        let dir = tempdir().expect("Failed to create temp dir");
+        let file_path = dir.path().join("config.toml");
 
-        assert_eq!(config.analyzer.len(), 3);
+        // データを一時ファイルに書き込み
+        {
+            let mut file = File::create(&file_path).expect("Failed to create temp file");
+            file.write_all(data.as_bytes()).expect("Failed to write to temp file");
+        }
 
-        assert_eq!(config.analyzer[0].name, "basic");
-        assert_eq!(config.analyzer[0].extension, "so");
-        assert_eq!(config.analyzer[0].dependencies, None);
-        assert_eq!(config.analyzer[0].conditions, None);
+        // load関数を呼び出してテスト
+        let config = Config::load(file_path.to_str().unwrap()).expect("Failed to load config");
+        assert_eq!(config.analyzer.len(), 2);
+        assert_eq!(config.analyzer[0].name, "analyzer1");
+        assert_eq!(config.analyzer[0].extension, "ext1");
+        assert_eq!(config.analyzer[1].name, "analyzer2");
+        assert_eq!(config.analyzer[1].extension, "ext2");
+        assert_eq!(config.analyzer[1].arguments.as_ref().unwrap()[0], "arg1");
+    }
 
-        assert_eq!(config.analyzer[1].name, "ldd");
-        assert_eq!(config.analyzer[1].extension, "sh");
-        assert_eq!(config.analyzer[1].dependencies, Some(vec!["basic".to_string()]));
-        assert_eq!(config.analyzer[1].conditions, Some("        basic.mime == \"application/x-pie-executable\" and\n        basic.size > 5000\n    ".to_string()));
+    #[test]
+    fn test_load_invalid_toml() {
+        // 不正なTOMLデータ
+        let data = r#"
+            [[analyzer]
+            name = "missing closing bracket"
+        "#;
 
-        assert_eq!(config.analyzer[2].name, "ghidra");
-        assert_eq!(config.analyzer[2].extension, "sh");
-        assert_eq!(config.analyzer[2].dependencies, Some(vec!["basic".to_string(), "ldd".to_string(), "cveinfo".to_string()]));
-        assert_eq!(config.analyzer[2].conditions, None);
+        let dir = tempdir().expect("Failed to create temp dir");
+        let file_path = dir.path().join("invalid_config.toml");
 
-        print_config(&config);
+        {
+            let mut file = File::create(&file_path).expect("Failed to create temp file");
+            file.write_all(data.as_bytes()).expect("Failed to write to temp file");
+        }
 
-        fs::remove_file(temp_file)?;
+        let result = Config::load(file_path.to_str().unwrap());
+        assert!(matches!(result, Err(Error::TomlError(_))));
+    }
 
-        Ok(())
+    #[test]
+    fn test_load_nonexistent_file() {
+        let result = Config::load("nonexistent.toml");
+        assert!(matches!(result, Err(Error::IoError(_))));
     }
 }
