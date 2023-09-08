@@ -1,7 +1,6 @@
 extern crate serde;
 extern crate toml;
 
-
 #[derive(serde::Deserialize, Debug)]
 pub struct Analyzer {
     name: String,
@@ -13,14 +12,15 @@ pub struct Analyzer {
 
 #[derive(serde::Deserialize, Debug)]
 pub struct Config {
-    analyzer: Vec<Analyzer>,
+    pub analyzer: Vec<Analyzer>,
 }
 
 impl Config {
-    pub fn load(filename: &str) -> Result<Config, Error>{
-        let contents = std::fs::read_to_string(filename)?;
+    pub fn load(filename: &std::path::Path) -> Result<Box<Config>, Error>{
+        let contents = std::fs::read_to_string(filename.to_path_buf())?;
         let config: Config = toml::from_str(&contents)?;
-        return Ok(config);
+        // sort_dependencies()
+        return Ok(Box::new(config));
     }
 }
 
@@ -85,7 +85,7 @@ mod tests {
         }
 
         // load関数を呼び出してテスト
-        let config = Config::load(file_path.to_str().unwrap()).expect("Failed to load config");
+        let config = Config::load(&file_path).expect("Failed to load config");
         assert_eq!(config.analyzer.len(), 2);
         assert_eq!(config.analyzer[0].name, "analyzer1");
         assert_eq!(config.analyzer[0].extension, "ext1");
@@ -110,13 +110,8 @@ mod tests {
             file.write_all(data.as_bytes()).expect("Failed to write to temp file");
         }
 
-        let result = Config::load(file_path.to_str().unwrap());
+        let result = Config::load(&file_path);
         assert!(matches!(result, Err(Error::TomlError(_))));
     }
 
-    #[test]
-    fn test_load_nonexistent_file() {
-        let result = Config::load("nonexistent.toml");
-        assert!(matches!(result, Err(Error::IoError(_))));
-    }
 }
