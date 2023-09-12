@@ -1,5 +1,6 @@
 use crate::config;
 use crate::analysis_result;
+pub mod dispatcher;
 
 /*
 pub fn analyze(firmware_root_directory: &std::path::Path, analyzer_directory: &std::path::Path, 
@@ -88,6 +89,7 @@ pub fn analyze(firmware_root_directory: &std::path::Path, config_file: &std::pat
         Ok(box_config) => box_config,
         Err(err) => return false,
     };
+    /*
     let db = database::Database::new();
 
     let result: analysis_result::AnalysisResult = analysis_result::AnalysisResult::new();
@@ -104,7 +106,7 @@ pub fn analyze(firmware_root_directory: &std::path::Path, config_file: &std::pat
     }
 
     db.write(&result);
-
+    */
     return true;
 }
 
