@@ -30,7 +30,7 @@ extension = "sh"
 dependencies = ["basic_info"]
 # Arguments to pass to the analyzer (dependencies required)
 # Structure not yet finalized
-arguments = ["basic_info.latest", ""]
+arguments = ["basic_info"]
 # Conditions for the analyzer to be executed (dependencies required)
 # Structure not yet finalized
 conditions = """

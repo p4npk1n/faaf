@@ -1,0 +1,25 @@
+[[analyzer]]
+# Name of the analysis script (required)
+name = "basic_info"
+# Extension of the analysis script (required)
+extension = "so"
+
+[[analyzer]]
+name = "ldd"
+extension = "sh"
+# Dependencies. Write the name of the analyzers.
+dependencies = ["basic_info"]
+# Arguments to pass to the analyzer (dependencies required)
+# Structure not yet finalized
+arguments = ["basic_info"]
+# Conditions for the analyzer to be executed (dependencies required)
+# Structure not yet finalized
+conditions = """
+basic_info.mime == "application/x-pie-executable" and
+basic_info.size > 5000
+"""
+
+[[analyzer]]
+name = "ghidra"
+extension = "sh"
+dependencies = ["basic_info", "ldd"]

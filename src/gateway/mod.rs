@@ -1,4 +1,3 @@
-use crate::config;
 use crate::analysis_result;
 pub mod dispatcher;
 
@@ -85,10 +84,12 @@ pub fn get_all_entries(firmware_root_directory: &std::path::Path) -> Result<Vec<
 pub fn analyze(firmware_root_directory: &std::path::Path, config_file: &std::path::Path, analyzer_directory: &std::path::Path, output: &std::path::Path) -> bool {
     // Currently, this function does not return any Err values.
     let entries: Vec<std::path::PathBuf> = get_all_entries(firmware_root_directory).unwrap();
-    let config: Box<config::Config> = match config::Config::load(config_file) {
+    /*
+    let config: Box<scheme::Config> = match scheme::Config::load(config_file) {
         Ok(box_config) => box_config,
         Err(err) => return false,
     };
+    */
     /*
     let db = database::Database::new();
 
