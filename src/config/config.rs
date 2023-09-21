@@ -1,7 +1,7 @@
 use serde::de::Deserializer;
 use serde::Deserialize;
 use crate::config::parser;
-
+/*
 #[derive(Deserialize, Debug)]
 pub struct Config {
     pub analyzer: Vec<Analyzer>,
@@ -58,6 +58,17 @@ impl<'de> Deserialize<'de> for Analyzer {
     }
 }
 
+impl Config {
+    /*
+    pub fn load(path: &std::path::Path){
+        let data  = match path.to_str() {
+            Some(data) => data,
+            None => return -1;
+        }
+    }
+    */
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -80,3 +91,4 @@ mod tests {
 
     }
 }
+*/
