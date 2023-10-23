@@ -8,15 +8,15 @@ struct Args {
     #[arg(short, long)]
     firmware_root_dir: PathBuf,
 
-    /// Script directory
+    /// Analyzer directory
     #[arg(short, long)]
     script_directory: PathBuf,
 
-    /// Config file
+    /// Config file for the analyzer
     #[arg(short, long)]
     config_file: PathBuf,
 
-    /// Database file
+    /// Output database file(sqlite)
     #[arg(short, long)]
     database_file: PathBuf,
 }

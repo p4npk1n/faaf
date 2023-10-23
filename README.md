@@ -8,6 +8,20 @@ This project is in its very early stages. As of now, the codebase is non-functio
 
 The goal is to analyze firmware extracted and decompressed from ROMs, and then store this data in a database. Ideally, the collected data would then be neatly organized and exported into formats such as HTML or Excel.
 
+### Usage
+
+```
+Usage: faaf --firmware-root-dir <FIRMWARE_ROOT_DIR> --script-directory <SCRIPT_DIRECTORY> --config-file <CONFIG_FILE> --database-file <DATABASE_FILE>
+
+Options:
+  -f, --firmware-root-dir <FIRMWARE_ROOT_DIR>  Firmware root directory
+  -s, --script-directory <SCRIPT_DIRECTORY>    Analyzer directory
+  -c, --config-file <CONFIG_FILE>              Config file for the analyzer
+  -d, --database-file <DATABASE_FILE>          Output database file(sqlite)
+  -h, --help                                   Print help
+  -V, --version  
+```
+
 ## Analysis Methodology
 
 The framework will iterate through multiple files in the extracted firmware. For each file, specific analysis scripts will be run to collect information.
@@ -46,7 +60,7 @@ dependencies = ["basic_info", "ldd"]
 
 The analyzer will support file types .so, .py, and .sh.
 
-# Writing a analyzer
+## Writing a analyzer
 
 For analyzer written in Python (py) or as a shared object (so), the entry point is a function called analyzer_main. This function will receive a JSON-formatted string as its argument from faaf and should return a JSON-formatted string as its output. The output JSON must have a result key at its root.
 
@@ -56,10 +70,7 @@ import json
 def analyzer_main(json_str: str) -> str:
 
     jsn_dict = json.loads(json_str)
-    path = jsn_dict["path"]  # If `dependencies` or `arguments` are not set in the toml configuration file, only the `path` of the file being analyzed is available by default.
-    size = jsn_dict["basic_info"]["size"]
-
-    # Perform some analysis
+    path = jsn_dict["absolute_path"] 
 
     rst = {
         "result": {
@@ -68,4 +79,80 @@ def analyzer_main(json_str: str) -> str:
     }
 
     return json.dumps(rst)
+```
+
+```rs
+extern crate serde;
+extern crate serde_json;
+extern crate magic;
+
+use std::fs;
+use serde::{Deserialize, Serialize};
+use std::os::unix::fs::PermissionsExt;
+use magic::Cookie;
+
+#[derive(Deserialize)]
+struct Input {
+    path: String,
+}
+
+#[repr(C)]
+pub struct OutputData {
+    data: *mut u8,
+    len: usize,
+}
+
+#[derive(Serialize)]
+struct FileInfo {
+    file_size: u64,
+    mime: String,
+    permissions: u32,
+    is_dir: bool,
+    is_file: bool,
+    last_modified: std::time::SystemTime,
+    last_accessed: std::time::SystemTime,
+    created: Option<std::time::SystemTime>,
+}
+
+#[no_mangle]
+pub extern "C" fn analyzer_main(data: *const u8, len: usize) -> OutputData {
+    let slice = unsafe { std::slice::from_raw_parts(data, len) };
+    let input_data = String::from_utf8_lossy(slice);
+    let v: serde_json::Value = serde_json::from_str(&input_data).unwrap();
+    //println!("{:?}", v);
+
+    let path = v["absolute_path"].as_str().unwrap();
+    let metadata = fs::metadata(path).unwrap();
+    let permissions = metadata.permissions().mode();
+
+    let cookie = Cookie::open(magic::cookie::Flags::MIME_TYPE | magic::cookie::Flags::MIME_ENCODING).unwrap();
+    let cookie = cookie.load(&Default::default()).unwrap();
+    let mime_type = cookie.file(&path).unwrap();
+
+	let file_info = FileInfo {
+	    file_size: metadata.len(),
+	    mime: mime_type,
+	    permissions: metadata.permissions().mode(),
+	    is_dir: metadata.is_dir(),
+	    is_file: metadata.is_file(),
+	    last_modified: metadata.modified().unwrap(),
+	    last_accessed: metadata.accessed().unwrap(),
+	    created: metadata.created().ok(),  // エラーの場合はNoneを設定
+	};
+
+    let output = serde_json::to_string(&file_info).unwrap();
+    //println!("output = {:?}", output);
+    let output_bytes = output.into_bytes();
+    let length = output_bytes.len();
+    //let output_ptr = output_bytes.as_ptr();
+    let output_ptr = output_bytes.as_ptr() as *mut u8;
+
+    //println!("dont forget");
+    std::mem::forget(output_bytes);
+    //println!("forget");
+    OutputData {
+        data: output_ptr,
+        len: length,
+    }
+}
 ```
