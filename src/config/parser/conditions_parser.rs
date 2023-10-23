@@ -1,25 +1,17 @@
-extern crate nom;
-use crate::config::parser::base_new;
-
-#[derive(Debug, PartialEq)]
-pub struct Condition {
-    left: base_new::Value,
-    op: base_new::Operator,
-    right: base_new::Value,
-    chain: Option<base_new::Chain>,
-}
+use crate::config::parser::base_parser;
+use crate::config::conditions;
 
 #[derive(Debug, PartialEq)]
 pub enum ParseConditionError<'a>{
-    BaseParseError(base_new::ParseError<'a>),
-    SyntaxError(base_new::ParseInput<'a>, &'a str),
-    InvalidValue(base_new::ParseInput<'a>, &'a str),
-    InvalidOperator(base_new::ParseInput<'a>, &'a str),
-    InvalidChain(base_new::ParseInput<'a>, &'a str)
+    BaseParseError(base_parser::ParseError<'a>),
+    SyntaxError(base_parser::ParseInput<'a>, &'a str),
+    InvalidValue(base_parser::ParseInput<'a>, &'a str),
+    InvalidOperator(base_parser::ParseInput<'a>, &'a str),
+    InvalidChain(base_parser::ParseInput<'a>, &'a str)
 }
 
-impl<'a> From<base_new::ParseError<'a>> for ParseConditionError<'a> {
-    fn from(err: base_new::ParseError<'a>) -> ParseConditionError<'a> {
+impl<'a> From<base_parser::ParseError<'a>> for ParseConditionError<'a> {
+    fn from(err: base_parser::ParseError<'a>) -> ParseConditionError<'a> {
         ParseConditionError::BaseParseError(err)
     }
 }
@@ -39,12 +31,12 @@ impl<'a> std::fmt::Display for ParseConditionError<'a> {
 impl<'a> std::error::Error for ParseConditionError<'a> {}
 
 
-pub fn parse_condition(input: base_new::ParseInput) -> Result<Condition, ParseConditionError<'_>> {
-    let start: base_new::ParseInput = input;
+pub fn parse_condition(input: base_parser::ParseInput) -> Result<conditions::Condition, ParseConditionError<'_>> {
+    let start: base_parser::ParseInput = input;
 
     // [value] [multispace] [operator] [multispace] [value] [multispace] [option<chain>] [\n or EOF]
-    let (remaining, space) = base_new::parse_whitespace(input)?;
-    let (remaining, left) = base_new::parse_value(remaining)?;
+    let (remaining, space) = base_parser::parse_whitespace(input)?;
+    let (remaining, left) = base_parser::parse_value(remaining)?;
     if remaining.is_empty() && !left.is_none(){
         // 111 EOF
         return Err(ParseConditionError::SyntaxError(remaining, "Truncated expression: Expected operator and right-hand value after left-hand value"));
@@ -59,7 +51,7 @@ pub fn parse_condition(input: base_new::ParseInput) -> Result<Condition, ParseCo
 
 
     // [multispace] [operator] [multispace] [value] [multispace] [option<chain>] [\n or EOF]
-    let (remaining, space) = base_new::parse_whitespace(remaining)?;
+    let (remaining, space) = base_parser::parse_whitespace(remaining)?;
     // I don't need it because I know the strings is not empty in the code above.
     //if result.is_none() && remaining.is_empty(){
     //}
@@ -73,7 +65,7 @@ pub fn parse_condition(input: base_new::ParseInput) -> Result<Condition, ParseCo
 
 
     // [operator] [multispace] [value] [multispace] [option<chain>] [\n or EOF]
-    let (remaining, op) = base_new::parse_operator(remaining)?;
+    let (remaining, op) = base_parser::parse_operator(remaining)?;
     // I don't need it because I know the strings is not empty in the code above.
     //if result.is_none() && remaining.is_empty(){
     //}
@@ -88,7 +80,7 @@ pub fn parse_condition(input: base_new::ParseInput) -> Result<Condition, ParseCo
 
     
     // [multispace] [value] [multispace] [option<chain>] [\n or EOF]
-    let (remaining, space) = base_new::parse_whitespace(remaining)?;
+    let (remaining, space) = base_parser::parse_whitespace(remaining)?;
     // I don't need it because I know the strings is not empty in the code above.
     //if result.is_none() && remaining.is_empty(){
     //}
@@ -103,14 +95,14 @@ pub fn parse_condition(input: base_new::ParseInput) -> Result<Condition, ParseCo
 
 
     // [value] [multispace] [option<chain>] [\n or EOF]
-    let (remaining, right) = base_new::parse_value(remaining)?;
+    let (remaining, right) = base_parser::parse_value(remaining)?;
     // I don't need it because I know the strings is not empty in the code above.
     //if result.is_none() && remaining.is_empty(){
     //}
     if !right.is_none() && remaining.is_empty(){
         // 111 == 111
         // success
-        return Ok( Condition { 
+        return Ok( conditions::Condition { 
             left:left.unwrap(), 
             op:op.unwrap(), 
             right:right.unwrap(), 
@@ -124,14 +116,14 @@ pub fn parse_condition(input: base_new::ParseInput) -> Result<Condition, ParseCo
 
 
     //[multispace] [option<chain>] [\n or EOF]
-    let (remaining, space) = base_new::parse_whitespace(remaining)?;
+    let (remaining, space) = base_parser::parse_whitespace(remaining)?;
     // I don't need it because I know the strings is not empty in the code above.
     //if result.is_none() && remaining.is_empty(){
     //}
     if !space.is_none() && remaining.is_empty(){
         // 111 == 111 space
         // success
-        return Ok( Condition { 
+        return Ok( conditions::Condition { 
             left:left.unwrap(), 
             op:op.unwrap(), 
             right:right.unwrap(), 
@@ -145,14 +137,14 @@ pub fn parse_condition(input: base_new::ParseInput) -> Result<Condition, ParseCo
 
 
     // [option<chain>] [\n or EOF]
-    let (remaining, chain) = base_new::parse_chain(remaining)?;
+    let (remaining, chain) = base_parser::parse_chain(remaining)?;
     // I don't need it because I know the strings is not empty in the code above.
     //if result.is_none() && remaining.is_empty(){
     //}
     if !chain.is_none() && remaining.is_empty(){
         // 111 == 111 and
         // success
-        return Ok( Condition { 
+        return Ok( conditions::Condition { 
             left:left.unwrap(), 
             op:op.unwrap(), 
             right:right.unwrap(), 
@@ -166,14 +158,14 @@ pub fn parse_condition(input: base_new::ParseInput) -> Result<Condition, ParseCo
 
 
     //[\n or EOF]
-    let (remaining, space) = base_new::parse_whitespace(remaining)?;
+    let (remaining, space) = base_parser::parse_whitespace(remaining)?;
     // I don't need it because I know the strings is not empty in the code above.
     //if result.is_none() && remaining.is_empty(){
     //}
     if !space.is_none() && remaining.is_empty(){
         // 111 == 111 and space
         // success
-        return Ok( Condition { 
+        return Ok( conditions::Condition { 
             left:left.unwrap(), 
             op:op.unwrap(), 
             right:right.unwrap(), 
@@ -194,15 +186,15 @@ pub fn parse_condition(input: base_new::ParseInput) -> Result<Condition, ParseCo
 #[cfg(test)]
 mod tests {
     use super::*;
-    use base_new::{Value, Operator, AccessPath};
+    use crate::config::parser::parser_type;
 
     #[test]
     fn test_parse_condition_valid_case() {
         let input = "a == b";
-        let expected = Ok(Condition {
-            left: base_new::Value::Access(vec![base_new::AccessPath::Key("a".to_string())]),
-            op: base_new::Operator::Equal,
-            right: base_new::Value::Access(vec![base_new::AccessPath::Key("b".to_string())]),
+        let expected = Ok(conditions::Condition {
+            left: parser_type::Value::Access(parser_type::Access{base: "a".to_string(), path: None}),
+            op: parser_type::Operator::Equal,
+            right: parser_type::Value::Access(parser_type::Access{base: "b".to_string(), path: None}),
             chain: None,
         });
         assert_eq!(parse_condition(input), expected);
@@ -218,11 +210,11 @@ mod tests {
     #[test]
     fn test_parse_condition_with_chain() {
         let input = "a == b and";
-        let expected = Ok(Condition {
-            left: base_new::Value::Access(vec![base_new::AccessPath::Key("a".to_string())]),
-            op: base_new::Operator::Equal,
-            right: base_new::Value::Access(vec![base_new::AccessPath::Key("b".to_string())]),
-            chain: Some(base_new::Chain::And),
+        let expected = Ok(conditions::Condition {
+            left: parser_type::Value::Access(parser_type::Access{base: "a".to_string(), path: None}),
+            op: parser_type::Operator::Equal,
+            right: parser_type::Value::Access(parser_type::Access{base: "b".to_string(), path: None}),
+            chain: Some(parser_type::Chain::And),
         });
         assert_eq!(parse_condition(input), expected);
     }
@@ -258,4 +250,3 @@ mod tests {
 
 
 }
-

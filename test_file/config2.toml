@@ -1,0 +1,14 @@
+[[analyzer]]
+# Name of the analysis script (required)
+name = "basic_test"
+# Extension of the analysis script (required)
+extension = "so"
+
+[[analyzer]]
+# Name of the analysis script (required)
+name = "basic_info"
+# Extension of the analysis script (required)
+extension = "py"
+conditions = """
+basic_test.mime == "text/x-c; charset=us-ascii"
+"""

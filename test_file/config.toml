@@ -2,7 +2,7 @@
 # Name of the analysis script (required)
 name = "basic_info"
 # Extension of the analysis script (required)
-extension = "so"
+extension = "py"
 
 [[analyzer]]
 name = "ldd"
@@ -18,8 +18,3 @@ conditions = """
 basic_info.mime == "application/x-pie-executable" and
 basic_info.size > 5000
 """
-
-[[analyzer]]
-name = "ghidra"
-extension = "sh"
-dependencies = ["basic_info", "ldd"]
