@@ -2,11 +2,12 @@
 
 ## Current Status
 
-This project is in its very early stages. As of now, the codebase is non-functional and primarily serves as a conceptual placeholder. The framework's functionality and project name are still under development and subject to change.
+Some functions of this program are now working. 
+However, functionalities such as `dependencies` in the config file, are still not operational.
 
 ## Objectives
 
-The goal is to analyze firmware extracted and decompressed from ROMs, and then store this data in a database. Ideally, the collected data would then be neatly organized and exported into formats such as HTML or Excel.
+The goal is to analyze firmware using specific analyzers. The results from these analyzers are stored in a database.
 
 ### Usage
 
