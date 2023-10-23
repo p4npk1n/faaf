@@ -64,6 +64,8 @@ The analyzer will support file types .so, .py, and .sh.
 
 For analyzer written in Python (py) or as a shared object (so), the entry point is a function called analyzer_main. This function will receive a JSON-formatted string as its argument from faaf and should return a JSON-formatted string as its output. The output JSON must have a result key at its root.
 
+### Analyzer for py
+
 ```py
 import base64
 import json
@@ -80,6 +82,8 @@ def analyzer_main(json_str: str) -> str:
 
     return json.dumps(rst)
 ```
+
+### Analyzer for so(rust)
 
 ```rs
 extern crate serde;
