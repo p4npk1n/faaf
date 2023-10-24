@@ -142,7 +142,7 @@ pub extern "C" fn analyzer_main(data: *const u8, len: usize) -> OutputData {
 	    is_file: metadata.is_file(),
 	    last_modified: metadata.modified().unwrap(),
 	    last_accessed: metadata.accessed().unwrap(),
-	    created: metadata.created().ok(),  // エラーの場合はNoneを設定
+	    created: metadata.created().ok(),
 	};
 
     let output = serde_json::to_string(&file_info).unwrap();
